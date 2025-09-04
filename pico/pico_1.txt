@@ -1,0 +1,7 @@
+import machine
+import time
+
+led = machine.Pin(15, machine.Pin.OUT)  # GPIO15 (musíš mít v simulaci LED)
+while True:
+    led.toggle()
+    time.sleep(0.5)

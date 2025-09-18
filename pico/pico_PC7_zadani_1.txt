@@ -1,0 +1,59 @@
+########################### komunikace přes repl přes usb, zkouška jak to vůbec rozjet na thonnym a poslat to do pica, tak aby to fungovalo
+from machine import Pin
+import sys
+
+led = Pin(2, Pin.OUT)
+
+print("Pico ready, type 'red' to turn on LED, 'off' to turn off.")
+
+while True:
+    cmd = input(">> ")  # čeká na zadání příkazu v REPL
+    if cmd.lower() == "red":
+        led.value(1)
+        print("LED ON")
+    elif cmd.lower() == "off":
+        led.value(0)
+        print("LED OFF")
+    else:
+        print("Unknown command")
+
+
+####### rozdělaný první cvičení
+
+from machine import Pin
+import sys
+
+red = Pin(2, Pin.OUT)
+green = Pin(3, Pin.OUT)
+yell = Pin(4, Pin.OUT)
+r_stat = False
+g_stat = False
+y_stat = False
+
+print("Pico ready, type 'red' to turn on LED, 'off' to turn off.")
+
+while True:
+    cmd = input(">> ")  # čeká na zadání příkazu v REPL
+    if cmd.lower() == "red" && r_stat == False:
+        red.value(1)
+        print("LED ON")
+    elif cmd.lower() == "off":
+        red.value(0)
+        print("LED OFF")
+    elif cmd.lower() == "off":
+        red.value(0)
+        print("LED OFF")
+    elif cmd.lower() == "off":
+        red.value(0)
+        print("LED OFF")
+    elif cmd.lower() == "off":
+        red.value(0)
+        print("LED OFF")
+    else:
+        print("Unknown command")
+
+Dnes jsem se seznamoval s thonnym, který sjem si instaloval pro Rasberry pi pico a zkoušel udělat první úlohu
+
+
+
+

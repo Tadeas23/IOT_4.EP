@@ -1,0 +1,148 @@
+iot-web/
+  ├─ app.py
+  └─templates/
+      └─ index.html
+
+
+
+---------------		app.py		------------------
+
+
+from flask import Flask, render_template, request, jsonify, abort
+from gpiozero import LED, DigitalOutputDevice
+import os
+
+# Použij BCM číslování pinů
+# Připrav mapu pinů které chceš ovládat (uprav dle potřeby)
+PINS = {
+    17: LED(17),  # příklad: pin 17
+    18: LED(18),  # pin 18
+    27: LED(27),  # pin 27
+}
+
+# Jednoduchý API klíč - nastav v prostředí před spuštěním
+API_KEY = os.environ.get("WEBGPIO_API_KEY", "change_me")
+
+app = Flask(__name__)
+
+def check_api_key():
+    key = request.headers.get("X-API-KEY") or request.args.get("api_key")
+    if not key or key != API_KEY:
+        abort(401, description="Unauthorized")
+
+@app.route("/")
+def index():
+    # předáme seznam pinů a jejich aktuální stav
+    states = {pin: bool(device.is_lit) for pin, device in PINS.items()}
+    return render_template("index.html", pins=states)
+
+@app.route("/api/pin/<int:pin>/set", methods=["POST"])
+def set_pin(pin):
+    check_api_key()
+    if pin not in PINS:
+        return jsonify({"error": "Unknown pin"}), 404
+    body = request.get_json(silent=True) or {}
+    action = body.get("action") or request.args.get("action")
+    device = PINS[pin]
+    if action == "on":
+        device.on()
+    elif action == "off":
+        device.off()
+    elif action == "toggle":
+        if device.is_lit:
+            device.off()
+        else:
+            device.on()
+    else:
+        return jsonify({"error": "Invalid action, use 'on', 'off' or 'toggle'"}), 400
+    return jsonify({"pin": pin, "state": "on" if device.is_lit else "off"})
+
+@app.route("/api/pins", methods=["GET"])
+def pins():
+    check_api_key()
+    return jsonify({pin: ("on" if dev.is_lit else "off") for pin, dev in PINS.items()})
+
+if __name__ == "__main__":
+    # Pro vývoj. Pro produkci doporučuju použít gunicorn nebo systemd + gunicorn/nginx
+    app.run(host="0.0.0.0", port=5000, debug=False)
+
+
+---------------		index.html		------------------
+
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>WebGPIO - ovládání pinů</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    .pin { margin: 10px 0; }
+    button { padding: 8px 12px; font-size: 14px; }
+    .on { color: green; font-weight: bold; }
+    .off { color: gray; }
+  </style>
+</head>
+<body>
+  <h1>Ovládání GPIO</h1>
+  <p>Nezapomeň posílat hlavičku <code>X-API-KEY</code> (nebo ?api_key=... v URL).</p>
+
+  <div id="pins">
+    {% for pin, state in pins.items() %}
+      <div class="pin" data-pin="{{ pin }}">
+        <span>Pin {{ pin }}: </span>
+        <span class="{{ 'on' if state else 'off' }}">{{ 'ON' if state else 'OFF' }}</span>
+        <button class="btn-on">Zapnout</button>
+        <button class="btn-off">Vypnout</button>
+        <button class="btn-toggle">Přepnout</button>
+      </div>
+    {% endfor %}
+  </div>
+
+  <script>
+    const API_KEY = prompt("Zadej API klíč (nebo stiskni OK pokud používáš query param)","");
+
+    async function call(pin, action) {
+      const headers = {};
+      if (API_KEY) headers['X-API-KEY'] = API_KEY;
+      const res = await fetch(`/api/pin/${pin}/set`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...headers
+        },
+        body: JSON.stringify({ action })
+      });
+      if (!res.ok) {
+        const txt = await res.text();
+        alert("Chyba: " + res.status + " " + txt);
+        return null;
+      }
+      return await res.json();
+    }
+
+    document.querySelectorAll('.pin').forEach(el => {
+      const pin = el.dataset.pin;
+      el.querySelector('.btn-on').onclick = async () => {
+        const r = await call(pin, 'on'); updateState(el, r);
+      };
+      el.querySelector('.btn-off').onclick = async () => {
+        const r = await call(pin, 'off'); updateState(el, r);
+      };
+      el.querySelector('.btn-toggle').onclick = async () => {
+        const r = await call(pin, 'toggle'); updateState(el, r);
+      };
+    });
+
+    function updateState(el, r) {
+      if (!r) return;
+      const span = el.querySelector('span + span');
+      if (r.state === 'on') {
+        span.textContent = 'ON'; span.className = 'on';
+      } else {
+        span.textContent = 'OFF'; span.className = 'off';
+      }
+    }
+  </script>
+</body>
+</html>
+
